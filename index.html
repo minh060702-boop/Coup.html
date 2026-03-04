@@ -2,167 +2,160 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Co Up Pro Mobile</title>
+<title>Co Up Engine Mobile</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-body{font-family:Arial;text-align:center;background:#f5f5f5}
+body{
+    font-family: Arial;
+    text-align:center;
+    background:#f2f2f2;
+}
 .board{
-display:grid;
-grid-template-columns:repeat(9,40px);
-gap:2px;
-justify-content:center;
-margin:10px auto;
+    display:grid;
+    grid-template-columns:repeat(9,40px);
+    gap:2px;
+    justify-content:center;
+    margin:20px auto;
 }
 .cell{
-width:40px;height:40px;
-border:1px solid #000;
-display:flex;
-align-items:center;
-justify-content:center;
-font-weight:bold;
-background:white;
-cursor:pointer;
+    width:40px;
+    height:40px;
+    border:1px solid #000;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-weight:bold;
+    background:white;
+    cursor:pointer;
 }
-.selected{background:#ff0}
-.controls{margin:10px}
-button{padding:8px;margin:5px}
+.selected{
+    background:yellow;
+}
+button{
+    padding:8px 14px;
+    margin:5px;
+}
 </style>
 </head>
+
 <body>
 
-<h3>CỜ ÚP ENGINE MOBILE</h3>
+<h2>CỜ ÚP ENGINE MOBILE</h2>
 
-<div class="board" id="board"></div>
+<div id="board" class="board"></div>
 
-<div class="controls">
 <button onclick="suggest()">TÍNH NƯỚC TỐI ƯU</button>
 <button onclick="resetBoard()">RESET</button>
-</div>
 
 <p id="info"></p>
 
 <script>
 
-const ROWS=10,COLS=9;
-let board=[];
-let selected=null;
+const ROWS = 10;
+const COLS = 9;
 
-const values={K:1000,R:_parallel?};
-const pieceValue={K:1000,R:9,C:7,N:5,B:3,A:2,P:1};
+let board = [];
+let selected = null;
 
-let unknownRed={R:2,N:2,C:2,B:2,A:2,P:5};
-let unknownBlack={r:2,n:2,c:2,b:2,a:2,p:5};
+const pieceValue = {
+    K:1000,R:9,C:7,N:5,B:3,A:2,P:1
+};
 
 function init(){
-const bd=document.getElementById("board");
-for(let r=0;r<ROWS;r++){
-board[r]=[];
-for(let c=0;c<COLS;c++){
-board[rRank?];
-let cell=document.createElement("div");
-cell.className="cell";
-cell.dataset.r=r;
-cell.dataset.c=c;
-cell.onclick=()=>clickCell(r,c);
-bd.appendChild(cell);
-}
-}
-render();
+    const bd = document.getElementById("board");
+    bd.innerHTML="";
+    board=[];
+
+    for(let r=0;r<ROWS;r++){
+        board[r]=[];
+        for(let c=0;c<COLS;c++){
+            board[r][c]=".";
+            let cell=document.createElement("div");
+            cell.className="cell";
+            cell.dataset.r=r;
+            cell.dataset.c=c;
+            cell.onclick=()=>clickCell(r,c);
+            bd.appendChild(cell);
+        }
+    }
+    render();
 }
 
 function clickCell(r,c){
-if(selected){
-move(selected.r,selected.c,r,c);
-selected=null;
-render();
-return;
-}
-let p=board[r][c];
-if(p==="U"){
-choosePiece(r,c);
-return;
-}
-if(p!=="." ){
-selected={r:r,c:c};
-render();
-}
+    if(selected){
+        move(selected.r,selected.c,r,c);
+        selected=null;
+        render();
+        return;
+    }
+
+    let p=board[r][c];
+
+    if(p==="."){
+        return;
+    }
+
+    if(p==="U"){
+        choosePiece(r,c);
+        return;
+    }
+
+    selected={r:r,c:c};
+    render();
 }
 
 function choosePiece(r,c){
-let p=prompt("Nhập quân (R,N,C,B,A,P) viết hoa=Đỏ, thường=Đen");
-if(!p)return;
-board[r][c]=p;
-updateUnknown(p);
-render();
-}
-
-function updateUnknown(p){
-if(p===p.toUpperCase()){
-if(unknownRed[p]!==undefined)unknownRed[p]--;
-}else{
-if(unknownBlack play?];
-}
+    let p=prompt("Nhập quân (R,N,C,B,A,P) | Hoa = Đỏ | Thường = Đen");
+    if(!p) return;
+    board[r][c]=p;
+    render();
 }
 
 function move(r1,c1,r2,c2){
-board[r2][c2]=board[r1][c1];
-board[r1][c1]=".";
+    board[r2][c2]=board[r1][c1];
+    board[r1][c1]=".";
 }
 
 function render(){
-let cells=document.querySelectorAll(".cell");
-cells.forEach(cell=>{
-let r=cell.dataset.r;
-let c=cell.dataset.c;
-cell.className="cell علا?";
-if(selected && selected.r==r && selected.c==c)
-cell.classList.add("selected");
-cell.innerText=board[r][c]==="."?"":board[r][c];
-});
+    let cells=document.querySelectorAll(".cell");
+    cells.forEach(cell=>{
+        let r=cell.dataset.r;
+        let c=cell.dataset.c;
+
+        cell.className="cell";
+
+        if(selected && selected.r==r && selected.c==c){
+            cell.classList.add("selected");
+        }
+
+        cell.innerText = board[r][c]==="." ? "" : board[r][c];
+    });
 }
 
 function evaluate(){
-let score=0;
-for(let r=0;r<ROWS;r++){
-for(let c=0;c<COLS;c++){
-let p=board[r][c];
-if(p!=="."){
-let v=pieceValue[p.toUpperCase()]||0;
-score+=(p===p.toUpperCase())?v:-v;
-}
-}
-}
-return score;
-}
+    let score=0;
 
-function probabilityRisk(){
-let total=0;
-for(let k in unknownBlack)total+=unknownBlack[k];
-let risk=0;
-for(let k in unknownBlack){
-let prob=unknownBlack[k]/total;
-risk+=prob*(pieceValue[k.toUpperCase()]||0);
-}
-return risk;
+    for(let r=0;r<ROWS;r++){
+        for(let c=0;c<COLS;c++){
+            let p=board[r][c];
+            if(p!=="."){
+                let v=pieceValue[p.toUpperCase()]||0;
+                score += (p===p.toUpperCase()) ? v : -v;
+            }
+        }
+    }
+
+    return score;
 }
 
 function suggest(){
-let material=evaluate();
-let risk=probabilityRisk();
-let finalScore=material-risk;
-document.getElementById("info").innerText=
-"Vật chất: "+material+
-" | Rủi ro quân úp: "+risk.toFixed(2)+
-" | Điểm tổng: "+finalScore.toFixed(2);
+    let material=evaluate();
+    document.getElementById("info").innerText=
+    "Điểm vật chất hiện tại: "+material;
 }
 
 function resetBoard(){
-for(let r=0;r<ROWS;r++)
-for(let c=0;c<COLS;c++)
-board[r][c]=".";
-unknownRed={R:2,N:2,C:2,B:2,A:2,P:5};
-unknownBlack={r:2,n:2,c:2,b:2,a:2,p:5};
-render();
+    init();
 }
 
 init();
