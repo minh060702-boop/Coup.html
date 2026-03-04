@@ -8,31 +8,27 @@
 <style>
 body{
     margin:0;
-    background:#d9c29c;
-    text-align:center;
+    background:#d8c29a;
     font-family:Arial;
+    text-align:center;
 }
 
-h2{
-    margin-top:20px;
+h2{margin:10px;}
+
+#status{
+    font-weight:bold;
+    margin-bottom:5px;
 }
 
 .board{
     width:360px;
     height:400px;
-    margin:20px auto;
-    position:relative;
-    background:#e6c48c;
-    box-shadow:0 5px 20px rgba(0,0,0,0.4);
-}
-
-.grid{
-    position:absolute;
-    width:100%;
-    height:100%;
+    margin:auto;
     display:grid;
     grid-template-columns:repeat(9,1fr);
     grid-template-rows:repeat(10,1fr);
+    background:#e6c48c;
+    box-shadow:0 5px 20px rgba(0,0,0,0.4);
 }
 
 .cell{
@@ -41,14 +37,15 @@ h2{
 }
 
 .piece{
-    width:32px;
-    height:32px;
-    background:#f5e2b8;
+    width:34px;
+    height:34px;
     border-radius:50%;
+    background:radial-gradient(circle at 30% 30%, #fff8e1, #e0b873);
     border:2px solid #5c3b1e;
     display:flex;
     align-items:center;
     justify-content:center;
+    font-size:18px;
     font-weight:bold;
     position:absolute;
     top:50%;
@@ -57,71 +54,88 @@ h2{
     cursor:pointer;
 }
 
-.red{
-    color:#c40000;
-}
+.red{color:#c40000;}
+.black{color:black;}
 
-.black{
-    color:black;
-}
+.highlight{background:#aaffaa !important;}
+.suggest{background:#87cefa !important;}
 
 button{
-    padding:8px 14px;
-    margin:10px;
+    margin:6px;
+    padding:6px 10px;
 }
 </style>
 </head>
 
 <body>
 
-<h2>CỜ ÚP ENGINE PRO</h2>
-
-<div class="board">
-    <div id="grid" class="grid"></div>
-</div>
-
-<button onclick="init()">RESET</button>
+<h2>CỜ ÚP PRO</h2>
+<div id="status"></div>
+<button onclick="suggestMove()">Gợi ý nước đi</button>
+<div id="board" class="board"></div>
 
 <script>
 
 const ROWS=10;
 const COLS=9;
+
 let board=[];
+let currentTurn="red";
+let selected=null;
+
+const value={K:10000,R:500,C:450,N:300,B:200,A:200,P:100};
+
+const redText={R:"車",N:"馬",B:"相",A:"仕",K:"帥",C:"砲",P:"兵"};
+const blackText={R:"车",N:"马",B:"象",A:"士",K:"将",C:"炮",P:"卒"};
+
+const setup=[
+["R","N","B","A","K","A","B","N","R"],
+["","","","","","","","",""],
+["","C","","","","","","C",""],
+["P","","P","","P","","P","","P"],
+["","","","","","","","",""],
+["","","","","","","","",""],
+["P","","P","","P","","P","","P"],
+["","C","","","","","","C",""],
+["","","","","","","","",""],
+["R","N","B","A","K","A","B","N","R"]
+];
 
 function init(){
-    const grid=document.getElementById("grid");
-    grid.innerHTML="";
+    const boardDiv=document.getElementById("board");
+    boardDiv.innerHTML="";
     board=[];
 
     for(let r=0;r<ROWS;r++){
         board[r]=[];
         for(let c=0;c<COLS;c++){
-            board[r][c]="U";
+            let val=setup[r][c];
+            if(val===""){
+                board[r][c]=null;
+            }else{
+                board[r][c]={
+                    type:val,
+                    color:r<5?"black":"red",
+                    faceUp:(val==="K")
+                };
+            }
+
             let cell=document.createElement("div");
             cell.className="cell";
             cell.dataset.r=r;
             cell.dataset.c=c;
-            cell.onclick=()=>flip(r,c);
-            grid.appendChild(cell);
+            cell.onclick=()=>clickCell(r,c);
+            boardDiv.appendChild(cell);
         }
     }
 
     render();
-}
-
-function flip(r,c){
-    if(board[r][c]!=="U") return;
-
-    let pieces=["R","N","C","B","A","P"];
-    let random=pieces[Math.floor(Math.random()*pieces.length)];
-
-    board[r][c]=random;
-    render();
+    updateStatus();
 }
 
 function render(){
-    let cells=document.querySelectorAll(".cell");
-    cells.forEach(cell=>{
+    document.querySelectorAll(".cell").forEach(cell=>{
+        cell.classList.remove("highlight","suggest");
         cell.innerHTML="";
         let r=cell.dataset.r;
         let c=cell.dataset.c;
@@ -129,25 +143,219 @@ function render(){
 
         if(p){
             let piece=document.createElement("div");
-            piece.className="piece";
+            piece.className="piece "+p.color;
 
-            if(p==="U"){
-                piece.innerText="●";
+            if(p.faceUp){
+                piece.innerText=p.color==="red"?redText[p.type]:blackText[p.type];
             }else{
-                piece.innerText=p;
-                piece.classList.add(
-                    Math.random()>0.5?"red":"black"
-                );
+                piece.style.background="#c49a6c";
             }
-
             cell.appendChild(piece);
         }
     });
 }
 
+function clickCell(r,c){
+    let p=board[r][c];
+
+    if(p && !p.faceUp){
+        p.faceUp=true;
+        render();
+        return;
+    }
+
+    if(p && p.faceUp && p.color===currentTurn){
+        selected={r,c};
+        showMoves(r,c);
+        return;
+    }
+
+    if(selected){
+        if(validMove(selected.r,selected.c,r,c)){
+            movePiece(selected.r,selected.c,r,c);
+            currentTurn=currentTurn==="red"?"black":"red";
+            render();
+            updateStatus();
+            setTimeout(aiMove,400);
+        }
+        selected=null;
+        render();
+    }
+}
+
+function movePiece(r1,c1,r2,c2){
+    board[r2][c2]=board[r1][c1];
+    board[r1][c1]=null;
+}
+
+function showMoves(r,c){
+    render();
+    for(let rr=0;rr<ROWS;rr++)
+        for(let cc=0;cc<COLS;cc++)
+            if(validMove(r,c,rr,cc))
+                document.querySelector(`.cell[data-r='${rr}'][data-c='${cc}']`)
+                .classList.add("highlight");
+}
+
+function inside(r,c){
+    return r>=0&&r<10&&c>=0&&c<9;
+}
+
+function countBetween(r1,c1,r2,c2){
+    let count=0;
+    if(r1==r2)
+        for(let c=Math.min(c1,c2)+1;c<Math.max(c1,c2);c++)
+            if(board[r1][c])count++;
+    if(c1==c2)
+        for(let r=Math.min(r1,r2)+1;r<Math.max(r1,r2);r++)
+            if(board[r][c1])count++;
+    return count;
+}
+
+function validMove(r1,c1,r2,c2){
+    if(!inside(r2,c2))return false;
+
+    let p=board[r1][c1];
+    let t=board[r2][c2];
+
+    if(!p|| (t&&t.color===p.color))return false;
+
+    let dr=r2-r1;
+    let dc=c2-c1;
+
+    switch(p.type){
+
+        case"R":
+            if(r1!==r2&&c1!==c2)return false;
+            return countBetween(r1,c1,r2,c2)===0;
+
+        case"N":
+            if(Math.abs(dr)==2&&Math.abs(dc)==1)
+                return !board[r1+dr/2][c1];
+            if(Math.abs(dr)==1&&Math.abs(dc)==2)
+                return !board[r1][c1+dc/2];
+            return false;
+
+        case"B":
+            if(Math.abs(dr)==2&&Math.abs(dc)==2)
+                return !board[r1+dr/2][c1+dc/2];
+            return false;
+
+        case"A":
+            return Math.abs(dr)==1&&Math.abs(dc)==1;
+
+        case"K":
+            if((Math.abs(dr)==1&&dc==0)||(Math.abs(dc)==1&&dr==0)){
+                if(p.color==="red"&&r2<7)return false;
+                if(p.color==="black"&&r2>2)return false;
+                if(c2<3||c2>5)return false;
+                return true;
+            }
+            return false;
+
+        case"C":
+            if(r1!==r2&&c1!==c2)return false;
+            let cnt=countBetween(r1,c1,r2,c2);
+            if(t)return cnt===1;
+            return cnt===0;
+
+        case"P":
+            if(p.color==="black"){
+                if(r1<5)return dr==1&&dc==0;
+                return (dr==1&&dc==0)||(dr==0&&Math.abs(dc)==1);
+            }else{
+                if(r1>4)return dr==-1&&dc==0;
+                return (dr==-1&&dc==0)||(dr==0&&Math.abs(dc)==1);
+            }
+    }
+    return false;
+}
+
+/* ================= AI MINIMAX ================= */
+
+function evaluate(){
+    let score=0;
+    for(let r=0;r<10;r++)
+        for(let c=0;c<9;c++){
+            let p=board[r][c];
+            if(p&&p.faceUp){
+                score+=p.color==="black"?value[p.type]:-value[p.type];
+            }
+        }
+    return score;
+}
+
+function aiMove(){
+    let best=-99999;
+    let bestMove=null;
+
+    for(let r=0;r<10;r++)
+        for(let c=0;c<9;c++){
+            let p=board[r][c];
+            if(p&&p.color==="black"&&p.faceUp){
+                for(let rr=0;rr<10;rr++)
+                    for(let cc=0;cc<9;cc++)
+                        if(validMove(r,c,rr,cc)){
+                            let backup=board[rr][cc];
+                            movePiece(r,c,rr,cc);
+                            let score=evaluate();
+                            board[r][c]=board[rr][cc];
+                            board[rr][cc]=backup;
+
+                            if(score>best){
+                                best=score;
+                                bestMove={r,c,rr,cc};
+                            }
+                        }
+            }
+        }
+
+    if(bestMove){
+        movePiece(bestMove.r,bestMove.c,bestMove.rr,bestMove.cc);
+        currentTurn="red";
+        render();
+        updateStatus();
+    }
+}
+
+function suggestMove(){
+    let best=-99999;
+    let bestMove=null;
+
+    for(let r=0;r<10;r++)
+        for(let c=0;c<9;c++){
+            let p=board[r][c];
+            if(p&&p.color==="red"&&p.faceUp){
+                for(let rr=0;rr<10;rr++)
+                    for(let cc=0;cc<9;cc++)
+                        if(validMove(r,c,rr,cc)){
+                            let backup=board[rr][cc];
+                            movePiece(r,c,rr,cc);
+                            let score=-evaluate();
+                            board[r][c]=board[rr][cc];
+                            board[rr][cc]=backup;
+
+                            if(score>best){
+                                best=score;
+                                bestMove={r,c,rr,cc};
+                            }
+                        }
+            }
+        }
+
+    if(bestMove){
+        render();
+        document.querySelector(`.cell[data-r='${bestMove.rr}'][data-c='${bestMove.cc}']`)
+        .classList.add("suggest");
+    }
+}
+
+function updateStatus(){
+    document.getElementById("status").innerText=
+    "Lượt: "+(currentTurn==="red"?"ĐỎ":"ĐEN");
+}
+
 init();
-
 </script>
-
 </body>
 </html>
