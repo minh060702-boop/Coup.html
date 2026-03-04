@@ -2,24 +2,13 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cờ Úp Pro</title>
-
+<title>Cờ Úp Chuẩn</title>
 <style>
 body{
-    margin:0;
     background:#d8c29a;
     font-family:Arial;
     text-align:center;
 }
-
-h2{margin:10px;}
-
-#status{
-    font-weight:bold;
-    margin-bottom:5px;
-}
-
 .board{
     width:360px;
     height:400px;
@@ -28,14 +17,11 @@ h2{margin:10px;}
     grid-template-columns:repeat(9,1fr);
     grid-template-rows:repeat(10,1fr);
     background:#e6c48c;
-    box-shadow:0 5px 20px rgba(0,0,0,0.4);
 }
-
 .cell{
     border:1px solid #5c3b1e;
     position:relative;
 }
-
 .piece{
     width:34px;
     height:34px;
@@ -53,25 +39,16 @@ h2{margin:10px;}
     transform:translate(-50%,-50%);
     cursor:pointer;
 }
-
 .red{color:#c40000;}
 .black{color:black;}
-
-.highlight{background:#aaffaa !important;}
-.suggest{background:#87cefa !important;}
-
-button{
-    margin:6px;
-    padding:6px 10px;
-}
+.highlight{background:#aaffaa;}
 </style>
 </head>
 
 <body>
 
-<h2>CỜ ÚP PRO</h2>
+<h2>CỜ ÚP</h2>
 <div id="status"></div>
-<button onclick="suggestMove()">Gợi ý nước đi</button>
 <div id="board" class="board"></div>
 
 <script>
@@ -83,25 +60,26 @@ let board=[];
 let currentTurn="red";
 let selected=null;
 
-const value={K:10000,R:500,C:450,N:300,B:200,A:200,P:100};
-
 const redText={R:"車",N:"馬",B:"相",A:"仕",K:"帥",C:"砲",P:"兵"};
 const blackText={R:"车",N:"马",B:"象",A:"士",K:"将",C:"炮",P:"卒"};
 
-const setup=[
-["R","N","B","A","K","A","B","N","R"],
-["","","","","","","","",""],
-["","C","","","","","","C",""],
-["P","","P","","P","","P","","P"],
-["","","","","","","","",""],
-["","","","","","","","",""],
-["P","","P","","P","","P","","P"],
-["","C","","","","","","C",""],
-["","","","","","","","",""],
-["R","N","B","A","K","A","B","N","R"]
-];
+function shuffle(arr){
+    for(let i=arr.length-1;i>0;i--){
+        let j=Math.floor(Math.random()*(i+1));
+        [arr[i],arr[j]]=[arr[j],arr[i]];
+    }
+    return arr;
+}
 
 function init(){
+    const pieces=["R","R","N","N","B","B","A","A","C","C","P","P","P","P","P","K"];
+
+    let redPieces=shuffle([...pieces]);
+    let blackPieces=shuffle([...pieces]);
+
+    let redIndex=0;
+    let blackIndex=0;
+
     const boardDiv=document.getElementById("board");
     boardDiv.innerHTML="";
     board=[];
@@ -109,16 +87,26 @@ function init(){
     for(let r=0;r<ROWS;r++){
         board[r]=[];
         for(let c=0;c<COLS;c++){
-            let val=setup[r][c];
-            if(val===""){
-                board[r][c]=null;
+
+            let piece=null;
+
+            if(r<5){
+                piece={
+                    type:blackPieces[blackIndex++],
+                    color:"black",
+                    faceUp:false,
+                    justRevealed:false
+                };
             }else{
-                board[r][c]={
-                    type:val,
-                    color:r<5?"black":"red",
-                    faceUp:(val==="K")
+                piece={
+                    type:redPieces[redIndex++],
+                    color:"red",
+                    faceUp:false,
+                    justRevealed:false
                 };
             }
+
+            board[r][c]=piece;
 
             let cell=document.createElement("div");
             cell.className="cell";
@@ -129,13 +117,13 @@ function init(){
         }
     }
 
-    render();
     updateStatus();
+    render();
 }
 
 function render(){
     document.querySelectorAll(".cell").forEach(cell=>{
-        cell.classList.remove("highlight","suggest");
+        cell.classList.remove("highlight");
         cell.innerHTML="";
         let r=cell.dataset.r;
         let c=cell.dataset.c;
@@ -158,8 +146,10 @@ function render(){
 function clickCell(r,c){
     let p=board[r][c];
 
+    // Lật quân
     if(p && !p.faceUp){
         p.faceUp=true;
+        p.justRevealed=true;
         render();
         return;
     }
@@ -171,12 +161,20 @@ function clickCell(r,c){
     }
 
     if(selected){
-        if(validMove(selected.r,selected.c,r,c)){
+        if(isLegalMove(selected.r,selected.c,r,c)){
             movePiece(selected.r,selected.c,r,c);
+
             currentTurn=currentTurn==="red"?"black":"red";
+
+            if(isCheckmate(currentTurn)){
+                alert("CHIẾU BÍ! "+(currentTurn==="red"?"ĐEN":"ĐỎ")+" thắng!");
+                init();
+                return;
+            }
+
+            selected=null;
             render();
             updateStatus();
-            setTimeout(aiMove,400);
         }
         selected=null;
         render();
@@ -186,13 +184,14 @@ function clickCell(r,c){
 function movePiece(r1,c1,r2,c2){
     board[r2][c2]=board[r1][c1];
     board[r1][c1]=null;
+    board[r2][c2].justRevealed=false;
 }
 
 function showMoves(r,c){
     render();
     for(let rr=0;rr<ROWS;rr++)
         for(let cc=0;cc<COLS;cc++)
-            if(validMove(r,c,rr,cc))
+            if(isLegalMove(r,c,rr,cc))
                 document.querySelector(`.cell[data-r='${rr}'][data-c='${cc}']`)
                 .classList.add("highlight");
 }
@@ -217,11 +216,21 @@ function validMove(r1,c1,r2,c2){
 
     let p=board[r1][c1];
     let t=board[r2][c2];
-
     if(!p|| (t&&t.color===p.color))return false;
 
     let dr=r2-r1;
     let dc=c2-c1;
+
+    // Nếu vừa lật → đi như Tốt
+    if(p.justRevealed){
+        if(p.color==="black"){
+            if(r1<5) return dr==1&&dc==0;
+            return (dr==1&&dc==0)||(dr==0&&Math.abs(dc)==1);
+        }else{
+            if(r1>4) return dr==-1&&dc==0;
+            return (dr==-1&&dc==0)||(dr==0&&Math.abs(dc)==1);
+        }
+    }
 
     switch(p.type){
 
@@ -245,13 +254,7 @@ function validMove(r1,c1,r2,c2){
             return Math.abs(dr)==1&&Math.abs(dc)==1;
 
         case"K":
-            if((Math.abs(dr)==1&&dc==0)||(Math.abs(dc)==1&&dr==0)){
-                if(p.color==="red"&&r2<7)return false;
-                if(p.color==="black"&&r2>2)return false;
-                if(c2<3||c2>5)return false;
-                return true;
-            }
-            return false;
+            return (Math.abs(dr)==1&&dc==0)||(Math.abs(dc)==1&&dr==0);
 
         case"C":
             if(r1!==r2&&c1!==c2)return false;
@@ -271,83 +274,61 @@ function validMove(r1,c1,r2,c2){
     return false;
 }
 
-/* ================= AI MINIMAX ================= */
-
-function evaluate(){
-    let score=0;
+function findKing(color){
     for(let r=0;r<10;r++)
         for(let c=0;c<9;c++){
             let p=board[r][c];
-            if(p&&p.faceUp){
-                score+=p.color==="black"?value[p.type]:-value[p.type];
-            }
+            if(p&&p.type==="K"&&p.color===color)
+                return {r,c};
         }
-    return score;
+    return null;
 }
 
-function aiMove(){
-    let best=-99999;
-    let bestMove=null;
+function isInCheck(color){
+    let king=findKing(color);
+    if(!king)return true;
+
+    let enemy=color==="red"?"black":"red";
 
     for(let r=0;r<10;r++)
         for(let c=0;c<9;c++){
             let p=board[r][c];
-            if(p&&p.color==="black"&&p.faceUp){
-                for(let rr=0;rr<10;rr++)
-                    for(let cc=0;cc<9;cc++)
-                        if(validMove(r,c,rr,cc)){
-                            let backup=board[rr][cc];
-                            movePiece(r,c,rr,cc);
-                            let score=evaluate();
-                            board[r][c]=board[rr][cc];
-                            board[rr][cc]=backup;
-
-                            if(score>best){
-                                best=score;
-                                bestMove={r,c,rr,cc};
-                            }
-                        }
+            if(p&&p.color===enemy&&p.faceUp){
+                if(validMove(r,c,king.r,king.c))
+                    return true;
             }
         }
-
-    if(bestMove){
-        movePiece(bestMove.r,bestMove.c,bestMove.rr,bestMove.cc);
-        currentTurn="red";
-        render();
-        updateStatus();
-    }
+    return false;
 }
 
-function suggestMove(){
-    let best=-99999;
-    let bestMove=null;
+function isLegalMove(r1,c1,r2,c2){
+    if(!validMove(r1,c1,r2,c2))return false;
+
+    let backup=board[r2][c2];
+    movePiece(r1,c1,r2,c2);
+
+    let inCheck=isInCheck(board[r2][c2].color);
+
+    board[r1][c1]=board[r2][c2];
+    board[r2][c2]=backup;
+
+    return !inCheck;
+}
+
+function isCheckmate(color){
+    if(!isInCheck(color))return false;
 
     for(let r=0;r<10;r++)
         for(let c=0;c<9;c++){
             let p=board[r][c];
-            if(p&&p.color==="red"&&p.faceUp){
+            if(p&&p.color===color&&p.faceUp){
                 for(let rr=0;rr<10;rr++)
                     for(let cc=0;cc<9;cc++)
-                        if(validMove(r,c,rr,cc)){
-                            let backup=board[rr][cc];
-                            movePiece(r,c,rr,cc);
-                            let score=-evaluate();
-                            board[r][c]=board[rr][cc];
-                            board[rr][cc]=backup;
-
-                            if(score>best){
-                                best=score;
-                                bestMove={r,c,rr,cc};
-                            }
-                        }
+                        if(isLegalMove(r,c,rr,cc))
+                            return false;
             }
         }
-
-    if(bestMove){
-        render();
-        document.querySelector(`.cell[data-r='${bestMove.rr}'][data-c='${bestMove.cc}']`)
-        .classList.add("suggest");
-    }
+    return true;
 }
 
 function updateStatus(){
@@ -356,6 +337,7 @@ function updateStatus(){
 }
 
 init();
+
 </script>
 </body>
 </html>
